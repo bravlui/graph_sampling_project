@@ -1,0 +1,91 @@
+################################################################################
+# Configuração padrão — Projeto 6: Amostragem de Redes Complexas
+################################################################################
+
+# ---------- Sementes globais ----------
+global_seed: 42
+
+# ---------- Redes sintéticas ----------
+graphs:
+  models:
+    ER:
+      avg_degree: 10
+    BA:
+      m: 5
+    WS:
+      k: 10
+      p: 0.3
+  sizes: [1000, 5000]
+  seeds: [0, 15, 45]
+
+# ---------- Amostragem ----------
+sampling:
+  fractions: [0.05, 0.10, 0.20, 0.30, 0.50]
+  repetitions: 10
+  samplers:
+    - random_node
+    - random_edge
+    - snowball
+    - random_walk
+    - preferential_random_walk
+    - metropolis_hastings_rw
+
+# ---------- Parâmetros dos samplers ----------
+sampler_params:
+  snowball:
+    num_seeds: 3
+  random_walk:
+    restart_prob: 0.15
+  preferential_random_walk:
+    restart_prob: 0.15
+    alpha: 1.0
+  goas:
+    restart_prob: 0.10
+    alpha_degree: 1.0
+    alpha_clustering: 1.0
+    alpha_bridge: 1.0
+    exploration: 0.05
+
+# ---------- Métricas ----------
+metrics:
+  approx_betweenness: true
+  betweenness_k: 200
+
+# ---------- Nível 2 — Meta-modelo ----------
+metamodel:
+  models:
+    classification:
+      - RandomForest
+      - GradientBoosting
+      - LogisticRegression
+      - MLP
+    regression:
+      - RandomForest
+      - GradientBoosting
+  cv_folds: 5
+
+# ---------- Nível 3 — RL ----------
+rl:
+  training:
+    num_episodes: 500
+    graph_size: 300
+    sample_frac: 0.20
+    gamma: 0.95
+    lr: 0.001
+    batch_size: 64
+    epsilon_start: 1.0
+    epsilon_end: 0.05
+    epsilon_decay: 0.995
+    target_update_freq: 10
+    replay_buffer_size: 10000
+  evaluation:
+    graph_sizes: [300, 500]
+    sample_fracs: [0.10, 0.20, 0.30]
+    seeds: [0, 1, 2, 3, 4]
+
+# ---------- Caminhos ----------
+paths:
+  results_raw: results/raw
+  results_processed: results/processed
+  results_figures: results/figures
+  results_models: results/models
