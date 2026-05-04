@@ -9,3 +9,4 @@ results/models/
 *.pt
 *.joblib
 .DS_Store
+*.log
