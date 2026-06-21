@@ -1,9 +1,20 @@
 """
-rl_sampler.py — Self-Supervised Graph Sampling via RL (Nível 3 - C3)
-=====================================================================
+rl_sampler.py — Amostragem de redes via Aprendizado por Reforço (DQN)
+=======================================================================
 
-Implementa ambiente de RL e DQN para aprender política de amostragem
-de grafos orientada à preservação estrutural.
+Formula a amostragem de grafos como um Processo de Decisão de Markov (MDP):
+- Estado: vetor de 8 features do grafo parcialmente amostrado (grau médio,
+  clustering, variância de grau, proporção amostrada, etc.)
+- Ação: escolha entre 5 primitivas de amostragem (random_node, random_walk,
+  snowball, metropolis_hastings_rw, goas)
+- Recompensa: redução na JS divergência do grau entre a amostra atual e o original
+
+O agente é treinado com DQN (Deep Q-Network) em múltiplos grafos de treinamento
+e avaliado em grafos de teste nunca vistos. A política aprendida é então usada
+para gerar amostras via `learned_rl_sampling`.
+
+Requer PyTorch (importação condicional). Se não disponível, o módulo é carregado
+mas as funções de treinamento e inferência retornam gracefully.
 """
 
 import numpy as np

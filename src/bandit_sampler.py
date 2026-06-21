@@ -1,10 +1,18 @@
 """
-bandit_sampler.py — Contextual Bandit Sampler para Amostragem de Redes
-=====================================================================
+bandit_sampler.py — Amostragem via Contextual Bandit (Thompson Sampling)
+=========================================================================
 
-Implementa Thompson Sampling para selecionar iterativamente a melhor
-estratégia (braço) de amostragem baseada no contexto atual do grafo
-parcialmente amostrado.
+Formula a seleção de sampler como um problema de bandit multi-braço contextual:
+a cada passo, o algoritmo escolhe um "braço" (random_walk, snowball, etc.) para
+adicionar o próximo nó à amostra, usando o contexto da amostra atual como feature.
+
+Thompson Sampling é uma política de exploração-exploração que amostra os pesos de
+um modelo Bayesiano linear por braço e escolhe o braço com maior recompensa esperada.
+A recompensa é a redução de divergência JS na distribuição de grau parcial.
+
+Vantagem sobre métodos fixos: adapta-se durante a amostragem de um único grafo,
+sem precisar de treinamento prévio separado. Desvantagem: overhead computacional
+por passo e sensibilidade à qualidade das features de contexto.
 """
 
 import numpy as np

@@ -2,8 +2,24 @@
 graph_generators.py — Geradores de redes sintéticas
 ====================================================
 
-Funções para gerar redes Erdős-Rényi, Barabási-Albert, Watts-Strogatz
-e LFR Benchmark, usadas no benchmark de amostragem.
+Os três modelos escolhidos representam regimes topológicos distintos, o que permite
+avaliar se o comportamento dos samplers depende do tipo de rede:
+
+- Erdős-Rényi G(n,p): conexões completamente aleatórias, distribuição de grau Poisson
+  — graus homogêneos, sem hubs, alto caminho médio.
+
+- Barabási-Albert: crescimento com apego preferencial (rich-get-richer), distribuição
+  de grau em lei de potência P(k) ∝ k^{-3} — hubs dominantes (redes livre de escala).
+  Introduzido por Barabási & Albert (1999) como modelo para a Web e redes sociais.
+
+- Watts-Strogatz: "mundo pequeno" com alto coeficiente de clustering e caminho médio
+  curto, semelhante a redes de relacionamento social (Watts & Strogatz, 1998).
+
+A combinação ER + BA + WS é o benchmark padrão em estudos de amostragem de redes
+(e.g., Stumpf et al., 2005; Leskovec & Faloutsos, 2006).
+
+Todos os grafos são retornados como o maior componente conectado,
+relabelado de 0 a n-1 para consistência com as métricas.
 """
 
 import networkx as nx
@@ -32,14 +48,19 @@ def _largest_connected_component(G: nx.Graph) -> nx.Graph:
 
 def generate_er_graph(n: int, avg_degree: float, seed: int) -> nx.Graph:
     """
-    Gera rede Erdős-Rényi G(n, p).
+    Gera rede Erdős-Rényi G(n, p), com p = avg_degree / (n-1).
+
+    Cada par de nós é conectado independentemente com probabilidade p. A distribuição
+    de grau resultante é Poisson com média avg_degree para n grande. Acima do limiar
+    de percolação p_c = 1/n (avg_degree > 1), a rede possui uma componente gigante;
+    usamos apenas essa componente para garantir conectividade.
 
     Parameters
     ----------
     n : int
         Número de nós.
     avg_degree : float
-        Grau médio desejado; p = avg_degree / (n - 1).
+        Grau médio desejado.
     seed : int
         Semente para reprodutibilidade.
 
@@ -58,14 +79,20 @@ def generate_er_graph(n: int, avg_degree: float, seed: int) -> nx.Graph:
 
 def generate_ba_graph(n: int, m: int, seed: int) -> nx.Graph:
     """
-    Gera rede Barabási-Albert.
+    Gera rede Barabási-Albert com crescimento e apego preferencial.
+
+    Cada novo nó conecta-se a m nós existentes com probabilidade proporcional ao
+    grau deles (rich-get-richer). O resultado é uma distribuição de grau em lei de
+    potência P(k) ∝ k^{-3}, com poucos hubs de grau muito alto e muitos nós de
+    grau baixo. Redes BA são sempre conectadas por construção, mas retiramos o LCC
+    para consistência com ER e WS.
 
     Parameters
     ----------
     n : int
         Número de nós.
     m : int
-        Número de arestas adicionadas por novo nó.
+        Número de arestas adicionadas por novo nó (grau mínimo = m).
     seed : int
         Semente para reprodutibilidade.
 
@@ -84,23 +111,29 @@ def generate_ba_graph(n: int, m: int, seed: int) -> nx.Graph:
 
 def generate_ws_graph(n: int, k: int, p: float, seed: int) -> nx.Graph:
     """
-    Gera rede Watts-Strogatz.
+    Gera rede Watts-Strogatz (modelo de mundo pequeno).
+
+    Parte de um anel regular onde cada nó conecta-se a k vizinhos. Cada aresta
+    é reconectada aleatoriamente com probabilidade p. Para p intermediário (~0.1–0.3),
+    a rede exibe a combinação de mundo pequeno: caminho médio curto (como ER) e alto
+    coeficiente de clustering (como o anel regular). A distribuição de grau é estreita
+    em torno de k — muito diferente da lei de potência do BA.
 
     Parameters
     ----------
     n : int
         Número de nós.
     k : int
-        Cada nó conecta-se a k vizinhos mais próximos no anel.
+        Número de vizinhos iniciais no anel; deve ser par e maior que ln(n).
     p : float
-        Probabilidade de reconexão.
+        Probabilidade de reconexão (0 = anel regular; 1 = ER aleatório).
     seed : int
         Semente para reprodutibilidade.
 
     Returns
     -------
     nx.Graph
-        Maior componente conectado (geralmente todo o grafo).
+        Maior componente conectado (geralmente toda a rede para p > 0).
     """
     if n < 2:
         raise ValueError(f"n deve ser >= 2, recebido {n}")

@@ -1,9 +1,18 @@
 """
-pareto.py — Structural Preservation Pareto Frontier (Nível 3 - C2)
-===================================================================
+pareto.py — Análise multiobjetivo e fronteira de Pareto
+========================================================
 
-Trata amostragem de redes como problema multiobjetivo.
-Identifica configurações Pareto-eficientes e analisa trade-offs.
+Trata a amostragem de redes como um problema de otimização multiobjetivo:
+ao invés de um único score agregado (SPS), avalia simultaneamente múltiplos
+critérios de preservação estrutural — grau, clustering, betweenness, etc.
+
+A fronteira de Pareto identifica configurações (sampler, fração) para as quais
+não existe alternativa que melhore em todos os objetivos ao mesmo tempo. Pontos
+fora da fronteira são "dominados" — há opção estritamente melhor disponível.
+
+Isso é relevante porque trade-offs existem: um método que preserva bem a
+distribuição de grau pode distorcer o clustering local, dependendo do tipo de rede.
+Expor esses trade-offs explicitamente é preferível a escondê-los em uma média.
 """
 
 import numpy as np
@@ -15,17 +24,21 @@ logger = logging.getLogger("graph_sampling")
 
 def is_pareto_efficient(points):
     """
-    Identifica pontos Pareto-eficientes (minimização).
+    Identifica pontos Pareto-eficientes em problema de minimização (todos os objetivos).
+
+    Um ponto i é dominado por j se j <= i em todos os objetivos E j < i em pelo menos um.
+    O algoritmo O(n²) é suficiente para os tamanhos de dataset deste estudo (n < 5000).
+    Para datasets maiores, existem implementações O(n log n) via ordenação lexicográfica.
 
     Parameters
     ----------
     points : np.ndarray, shape (n, m)
-        Matriz de objetivos (cada linha é um ponto, cada coluna é um objetivo).
+        Matriz onde cada linha é um ponto e cada coluna um objetivo a minimizar.
 
     Returns
     -------
-    np.ndarray, shape (n,)
-        Máscara booleana indicando pontos não dominados.
+    np.ndarray of bool, shape (n,)
+        True para pontos não dominados (pertencentes à fronteira de Pareto).
     """
     n = points.shape[0]
     is_efficient = np.ones(n, dtype=bool)

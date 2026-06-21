@@ -2,8 +2,25 @@
 samplers.py — Métodos de amostragem de redes
 =============================================
 
-Implementa 6 métodos clássicos + GOAS (Goal-Oriented Adaptive Sampling).
-Cada sampler retorna um subgrafo induzido relabelado e metadados.
+Implementa seis métodos clássicos de amostragem, cobrindo um espectro que vai
+do puramente aleatório (random node) ao orientado a estrutura (MHRW). A escolha
+do método impacta diretamente quais propriedades topológicas são preservadas na
+amostra — tema central investigado neste projeto (Stumpf et al., 2005).
+
+Métodos implementados
+---------------------
+1. Random Node Sampling  — seleção i.i.d. de nós; referência imparcial para atributos.
+2. Random Edge Sampling  — seleção aleatória de arestas; favorece nós de alto grau.
+3. Snowball Sampling     — expansão BFS a partir de sementes; captura vizinhança local.
+4. Random Walk Sampling  — caminhada de Markov; estacionária proporcional ao grau.
+5. Preferential RW       — caminhada com atração por grau; amplifica viés do RW.
+6. Metropolis-Hastings RW — caminhada com correção MH; estacionária aproximadamente uniforme.
+
+Complementos (aprofundamento)
+7. GOAS  — exploração orientada a objetivo via softmax sobre fronteira.
+8. GOAS-MH  — GOAS com correção MH e adaptação dinâmica dos pesos.
+
+Cada função retorna (subgraph: nx.Graph, metadata: dict).
 """
 
 import networkx as nx
@@ -38,7 +55,14 @@ def _target_size(G, sample_frac):
 # 1. Random Node Sampling
 # ============================================================================
 def random_node_sampling(G, sample_frac, seed):
-    """Seleciona nós uniformemente ao acaso e retorna subgrafo induzido."""
+    """
+    Seleciona nós uniformemente ao acaso (i.i.d.) e retorna subgrafo induzido.
+
+    Por ser uma amostragem independente e identicamente distribuída, preserva
+    distribuições de atributos nodais (e.g., grau esperado), mas não garante
+    conectividade nem captura estruturas locais como triângulos ou comunidades.
+    Funciona como linha de base neutra para comparação com métodos estruturados.
+    """
     rng = np.random.RandomState(seed)
     target = _target_size(G, sample_frac)
     nodes = list(G.nodes())
@@ -50,7 +74,14 @@ def random_node_sampling(G, sample_frac, seed):
 # 2. Random Edge Sampling
 # ============================================================================
 def random_edge_sampling(G, sample_frac, seed):
-    """Seleciona arestas ao acaso até cobrir ~sample_frac dos nós."""
+    """
+    Seleciona arestas ao acaso até cobrir ~sample_frac dos nós.
+
+    Um nó de grau k tem probabilidade proporcional a k de ser incluído via
+    arestas incidentes. Isso introduz viés em favor de hubs, super-representando
+    nós de alto grau em relação à distribuição original — um efeito oposto ao
+    random node, onde todos os nós têm a mesma chance de seleção.
+    """
     rng = np.random.RandomState(seed)
     target = _target_size(G, sample_frac)
     edges = list(G.edges())
@@ -68,7 +99,16 @@ def random_edge_sampling(G, sample_frac, seed):
 # 3. Snowball Sampling
 # ============================================================================
 def snowball_sampling(G, sample_frac, seed, num_seeds=3):
-    """Expansão BFS a partir de múltiplos nós semente."""
+    """
+    Expansão BFS a partir de múltiplos nós semente até atingir a fração alvo.
+
+    Preserva bem a estrutura de vizinhança local: triângulos e comunidades densas
+    tendem a ser capturados integralmente, pois a expansão segue as arestas reais.
+    O efeito colateral é que regiões periféricas da rede ficam sub-representadas —
+    o "snowball" pára ao atingir o alvo, sem cobrir toda a rede.
+    Quando a BFS esgota componentes antes de atingir o alvo, novos sementes
+    aleatórios são adicionados para garantir a fração desejada.
+    """
     rng = np.random.RandomState(seed)
     target = _target_size(G, sample_frac)
     nodes = list(G.nodes())
@@ -96,7 +136,15 @@ def snowball_sampling(G, sample_frac, seed, num_seeds=3):
 # 4. Random Walk Sampling
 # ============================================================================
 def random_walk_sampling(G, sample_frac, seed, restart_prob=0.15):
-    """Caminhada aleatória com possibilidade de restart."""
+    """
+    Caminhada aleatória com possibilidade de restart (teleportação).
+
+    A distribuição estacionária de uma caminhada aleatória simples sobre um grafo
+    não-direcionado é proporcional ao grau: π(v) ∝ deg(v). Isso significa que nós
+    de alto grau são visitados com mais frequência, inflando a média de grau da
+    amostra em relação à rede original. O restart (prob=0.15) garante que a
+    caminhada não fique presa em componentes isolados, mas não corrige o viés de grau.
+    """
     rng = np.random.RandomState(seed)
     target = _target_size(G, sample_frac)
     nodes = list(G.nodes())
@@ -121,7 +169,15 @@ def random_walk_sampling(G, sample_frac, seed, restart_prob=0.15):
 # 5. Preferential Random Walk Sampling
 # ============================================================================
 def preferential_random_walk_sampling(G, sample_frac, seed, restart_prob=0.15, alpha=1.0):
-    """Caminhada onde P(vizinho v) proporcional a degree(v)^alpha."""
+    """
+    Caminhada aleatória com preferência por nós de alto grau (alpha controla o viés).
+
+    A probabilidade de mover para o vizinho v é proporcional a deg(v)^alpha.
+    Com alpha=1 (padrão), o viés é análogo ao modelo de Barabási-Albert: hubs
+    atraem mais visitas. Alpha > 1 amplifica esse efeito; alpha=0 reduz ao random
+    walk padrão. Útil para comparar como a intensidade do viés de grau afeta a
+    preservação de distribuições como betweenness e eigenvector centrality.
+    """
     rng = np.random.RandomState(seed)
     target = _target_size(G, sample_frac)
     nodes = list(G.nodes())
@@ -153,7 +209,17 @@ def preferential_random_walk_sampling(G, sample_frac, seed, restart_prob=0.15, a
 # 6. Metropolis-Hastings Random Walk Sampling
 # ============================================================================
 def metropolis_hastings_random_walk_sampling(G, sample_frac, seed):
-    """Random Walk com correção MH: aceitação min(1, deg(u)/deg(v))."""
+    """
+    Random Walk com correção Metropolis-Hastings para estacionária aproximadamente uniforme.
+
+    O viés de grau do random walk simples (π(v) ∝ deg(v)) é corrigido aceitando a
+    transição u→v com probabilidade min(1, deg(u)/deg(v)). Se o vizinho candidato
+    tem grau maior que o nó atual, a transição pode ser rejeitada — o caminhante
+    permanece em u. Isso compensa a maior conectividade de hubs. Na teoria de cadeias
+    de Markov, esse critério garante o balanço detalhado com a distribuição uniforme
+    (Leskovec & Faloutsos, 2006). Na prática, para grafos esparsos com caudas longas
+    de grau (como BA), a convergência é mais lenta do que em redes homogêneas (como ER).
+    """
     rng = np.random.RandomState(seed)
     target = _target_size(G, sample_frac)
     nodes = list(G.nodes())
@@ -186,10 +252,18 @@ def goal_oriented_adaptive_sampling(
     exploration=0.05,
 ):
     """
-    Sampler adaptativo orientado ao objetivo estrutural.
+    Sampler orientado a objetivo: prioriza nós da fronteira segundo critérios estruturais.
 
-    Escolhe próximo nó da fronteira com base em scores ponderados
-    pelo objetivo desejado (degree, clustering, shortest_path, centrality, balanced).
+    Mantém um conjunto de fronteira (vizinhos ainda não amostrados) e a cada passo
+    escolhe o próximo nó via softmax sobre scores ponderados por objetivo:
+    - degree: favorece hubs (útil para preservar distribuição de grau em BA)
+    - clustering: favorece triângulos (útil para redes WS com alto clustering)
+    - shortest_path: favorece pontes entre componentes (bridge score)
+    - centrality: favorece nós com alto k-core (núcleo denso)
+    - balanced: pesos iguais para todos os critérios
+
+    O parâmetro `exploration` controla a fração de saltos aleatórios para fora da
+    fronteira, evitando que o sampler fique preso em um único cluster denso.
     """
     rng = np.random.RandomState(seed)
     target = _target_size(G, sample_frac)

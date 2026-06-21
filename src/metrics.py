@@ -1,9 +1,20 @@
 """
-metrics.py — Métricas topológicas
-==================================
+metrics.py — Métricas topológicas de centralidade e estrutura
+==============================================================
 
-Calcula propriedades estruturais de redes originais e amostradas.
-Inclui distribuições por nó e métricas globais agregadas.
+Para comparar uma rede amostrada com a original, calculamos seis propriedades nodais
+(distribuições) e um conjunto de métricas globais escalares. Cada propriedade captura
+um aspecto diferente da estrutura:
+
+- Grau            : conectividade local; discrimina ER (Poisson) de BA (lei de potência).
+- Clustering      : densidade de triângulos na vizinhança; alto em WS, baixo em ER e BA.
+- Betweenness     : fração de caminhos mais curtos que passam por um nó; revela gargalos.
+- Eigenvector     : influência global via potência do autovetor dominante; correlaciona com hubs.
+- Closeness       : inverso do caminho médio ao restante da rede; alto em nós centrais.
+- K-core          : maior subestrutura densa da qual o nó participa; indicador de núcleo.
+
+Betweenness e eigenvector são custosos para redes grandes. Para n > 500, usamos
+betweenness aproximada (k=200 pivôs) e aumentamos max_iter do eigenvector.
 """
 
 import numpy as np
@@ -23,12 +34,17 @@ def safe_largest_connected_component(G):
 
 def compute_node_distributions(G, approx_betweenness=True, seed=0):
     """
-    Calcula distribuições por nó.
+    Calcula as seis distribuições nodais usadas na comparação original × amostra.
+
+    Para betweenness com n > 500, usa estimativa por k=200 amostras aleatórias de
+    pivôs, com erro padrão O(1/sqrt(k)) — suficiente para comparação de distribuições
+    mas não para valores exatos por nó. Eigenvector pode falhar a convergir em redes
+    de componentes múltiplos; nesses casos retorna zeros.
 
     Returns
     -------
     dict[str, np.ndarray]
-        Chaves: degree, clustering, betweenness, eigenvector, closeness, k_core
+        Chaves: degree, clustering, betweenness, eigenvector, closeness, k_core.
     """
     n = G.number_of_nodes()
     distributions = {}

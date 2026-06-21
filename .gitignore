@@ -1,12 +1,82 @@
+# Ambientes virtuais
 venv/
+.venv/
+.venvs/
+
+# Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 .ipynb_checkpoints/
+
+# Sistema
+.DS_Store
+*.log
+Thumbs.db
+
+# Resultados brutos (grandes demais para o repositório)
 results/raw/
-results/processed/
-results/figures/
 results/models/
 *.pt
 *.joblib
-.DS_Store
-*.log
+
+# Figuras e CSVs com nomenclatura interna de desenvolvimento (substituídos por nomes descritivos)
+results/figures/level[0-9]_*.png
+results/processed/level[0-9]_*.csv
+results/figures/article_workflow/
+results/processed/extra[0-9]_*.csv
+results/processed/notebook_*.csv
+results/processed/real_networks_*.csv
+
+# Extensão 1 — redes reais (standby, fora do repositório)
+src/degree_bias_correction.py
+src/extended_metrics_bias.py
+scripts/run_extra1*.py
+scripts/load_real_networks.py
+results/figures/extra1_*.png
+configs/extensao1*.yaml
+
+# Extensão 2 — re-identificação / visão computacional (standby, fora do repositório)
+src/cv_reranking.py
+src/market1501_loader.py
+src/reranking_pipeline.py
+scripts/run_extra2*.py
+scripts/train_extra2*.py
+scripts/convert_to_informs_format.py
+results/figures/extra2_*.png
+configs/extensao2*.yaml
+
+# Scripts internos INFORMS / geração de relatório intermediário
+scripts/run_informs*.py
+scripts/generate_complete_report.py
+informs_repo/
+
+# Scripts com nomenclatura interna de desenvolvimento (substituídos por scripts sem "level")
+scripts/run_level*.py
+
+# Dataset Market-1501
+data/
+
+# Relatório LaTeX (entregue separadamente)
+report/
+
+# Configs de teste rápido
+configs/_quick/
+
+# Scripts e arquivos de recuperação de dados (utilitários de desenvolvimento)
+recover_level1.py
+
+# Notebooks de extensão (Colab)
+notebooks/
+
+# Documentos internos de planejamento
+Relatorio_Final_Amostragem.md
+plano_publicacao.md
+docs/
+
+# Relatórios intermediários gerados automaticamente (entregue separadamente)
+reports/
+
+# Configurações do IDE Claude Code (local)
+.claude/

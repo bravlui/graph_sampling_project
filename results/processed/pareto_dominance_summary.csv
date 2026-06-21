@@ -1,0 +1,7 @@
+sampler,pareto_count,pareto_frequency,min_pareto_frac
+snowball,103,0.2909604519774011,0.05
+preferential_random_walk,90,0.2542372881355932,0.05
+metropolis_hastings_rw,54,0.15254237288135594,0.3
+random_edge,48,0.13559322033898305,0.05
+random_walk,46,0.12994350282485875,0.05
+random_node,13,0.03672316384180791,0.05

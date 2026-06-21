@@ -1,9 +1,15 @@
 """
-experiments.py — Lógica do benchmark Nível 1
-=============================================
+experiments.py — Orquestrador do benchmark de amostragem
+=========================================================
 
-Executa benchmark multicritério completo, calculando SPS e salvando
-resultados incrementais em CSV.
+Executa o benchmark multicritério completo: para cada combinação de rede,
+sampler, fração amostral e repetição, gera uma amostra, calcula as métricas
+topológicas e compara com a rede original via KL, JS, Wasserstein, KS e SPS.
+
+O Structural Preservation Score (SPS) agrega JS de distribuições de grau,
+clustering e betweenness com erros relativos de métricas globais (caminho
+médio, clustering médio, grau médio). Quanto menor o SPS, melhor a amostra
+preserva a estrutura original.
 """
 
 import os
@@ -24,17 +30,15 @@ logger = logging.getLogger("graph_sampling")
 
 def compute_sps(dist_row, global_row):
     """
-    Structural Preservation Score (SPS).
+    Structural Preservation Score (SPS) — métrica agregada de fidelidade da amostra.
 
-    Média normalizada de:
-    - JS degree
-    - JS clustering
-    - JS betweenness
-    - erro relativo avg_shortest_path_lcc
-    - erro relativo avg_clustering
-    - erro relativo avg_degree
+    Combina, em pesos iguais, três divergências JS de distribuições (grau, clustering,
+    betweenness) com três erros relativos de métricas globais (caminho médio, clustering
+    médio, grau médio). O resultado é um único número: quanto menor, mais fiel à
+    estrutura original. A escolha de pesos iguais é uma decisão de projeto consciente
+    — alternativas ponderadas são exploradas na análise Pareto (ver pareto.py).
 
-    Quanto menor, melhor.
+    Quanto menor o SPS, melhor preservação estrutural.
     """
     components = []
 
@@ -119,21 +123,25 @@ def run_single_experiment(
     return dist_row, global_row
 
 
-def run_level1_benchmark(config):
+def run_sampling_benchmark(config):
     """
-    Executa benchmark completo do Nível 1.
+    Executa o benchmark multicritério de amostragem de redes.
+
+    Para cada grafo da suíte, calcula as métricas da rede original uma única vez,
+    depois itera sobre todas as combinações (sampler, fração, repetição). O resultado
+    é salvo em dois CSVs: distâncias entre distribuições e erros de métricas globais.
 
     Parameters
     ----------
     config : dict
-        Configuração completa carregada do YAML.
+        Configuração completa carregada do YAML (graphs, sampling, paths).
 
     Returns
     -------
     tuple (pd.DataFrame, pd.DataFrame)
-        DataFrames de distâncias e erros globais.
+        DataFrames de distâncias de distribuições e erros de métricas globais.
     """
-    logger.info("=== Nível 1: Benchmark Multicritério ===")
+    logger.info("=== Benchmark de Amostragem de Redes ===")
 
     # Gerar suíte de grafos
     suite = generate_graph_suite(config)
@@ -194,14 +202,14 @@ def run_level1_benchmark(config):
 
     # Salvar CSVs brutos
     if not df_dist.empty:
-        save_csv(df_dist, results_path(config, "raw", "level1_distribution_distances.csv"))
+        save_csv(df_dist, results_path(config, "raw", "distribution_distances.csv"))
     if not df_global.empty:
-        save_csv(df_global, results_path(config, "raw", "level1_global_errors.csv"))
+        save_csv(df_global, results_path(config, "raw", "global_errors.csv"))
 
     # Gerar resumos
     _generate_summaries(config, df_dist, df_global)
 
-    logger.info("=== Benchmark Nível 1 concluído ===")
+    logger.info("=== Benchmark de amostragem concluído ===")
     return df_dist, df_global
 
 
@@ -215,7 +223,7 @@ def _generate_summaries(config, df_dist, df_global):
     numeric_cols = df_dist.select_dtypes(include=[np.number]).columns.tolist()
     summary = df_dist.groupby(group_cols)[numeric_cols].agg(["mean", "std"]).reset_index()
     summary.columns = ["_".join(col).strip("_") for col in summary.columns]
-    save_csv(summary, results_path(config, "processed", "level1_summary_by_sampler.csv"))
+    save_csv(summary, results_path(config, "processed", "summary_by_sampler.csv"))
 
     # Best sampler by metric
     metric_cols = [c for c in df_dist.columns if c.endswith("_JS") or c.endswith("_KL")]
@@ -231,4 +239,4 @@ def _generate_summaries(config, df_dist, df_global):
 
     if best_rows:
         df_best = pd.DataFrame(best_rows)
-        save_csv(df_best, results_path(config, "processed", "level1_best_sampler_by_metric.csv"))
+        save_csv(df_best, results_path(config, "processed", "best_sampler_by_metric.csv"))

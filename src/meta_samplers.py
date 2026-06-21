@@ -1,10 +1,23 @@
 """
-meta_samplers.py — Amostradores Baseados em Meta-Heurísticas (Nível 4)
-======================================================================
+meta_samplers.py — Samplers baseados em meta-heurísticas (PSO e ACO)
+=====================================================================
 
-Implementa:
-1. PSO-GOAS: Otimização por Enxame de Partículas para hiperparâmetros do GOAS.
-2. ACO Sampler: Amostragem de grafos usando Colônia de Formigas baseada em caminhos.
+Dois métodos de otimização de hiperparâmetros aplicados ao GOAS:
+
+PSO-GOAS (Particle Swarm Optimization):
+  Trata os pesos do GOAS (alpha_degree, alpha_clustering, alpha_bridge) como
+  partículas em um espaço tridimensional contínuo. Cada partícula avalia sua
+  configuração rodando o GOAS na rede alvo e medindo o SPS resultante. A "melhor"
+  configuração encontrada é usada para a amostragem final. PSO é adequado aqui
+  porque o espaço de hiperparâmetros é contínuo, diferenciável aprox. e de baixa
+  dimensão (3 variáveis).
+
+ACO Sampler (Ant Colony Optimization):
+  As formigas constroem caminhos sobre o grafo original, deixando feromônios em
+  arestas que levaram a amostras de alta qualidade. Iterações subsequentes de
+  formigas preferem arestas com mais feromônio. O feromônio decai com o tempo
+  para evitar estagnação. ACO é uma alternativa natural para problemas sobre grafos,
+  onde o espaço de busca é discreto e estruturado.
 """
 
 import numpy as np

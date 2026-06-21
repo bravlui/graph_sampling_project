@@ -1,9 +1,21 @@
 """
-distances.py — Distâncias entre distribuições
-===============================================
+distances.py — Distâncias entre distribuições topológicas
+==========================================================
 
-Compara distribuições de métricas entre a rede original e a rede amostrada
-usando KL, JS, Wasserstein e KS.
+Para avaliar a fidelidade de uma rede amostrada, comparamos as distribuições
+de métricas estruturais (grau, clustering, betweenness, etc.) entre a rede
+original e a amostra. Cada métrica de distância captura um aspecto diferente:
+
+- KL divergence  : mede "surpresa" ao substituir Q por P; assimétrica e ilimitada.
+- JS divergence  : versão simétrica e limitada da KL; sempre entre 0 e ln(2).
+- Wasserstein    : Earth Mover's Distance — custo de transportar uma distribuição
+                   na outra; sensível à magnitude das diferenças, não apenas suporte.
+- KS statistic   : teste não-paramétrico sobre distribuição cumulativa; independente
+                   da escolha de bins.
+
+Usar múltiplas métricas é importante porque cada uma pode revelar aspectos distintos
+da divergência: duas distribuições podem ter KL baixo mas Wasserstein alto, indicando
+que a forma geral foi preservada mas a escala dos valores foi distorcida.
 """
 
 import numpy as np
@@ -43,14 +55,18 @@ def normalize_histogram(values, bins=50, range_=None, eps=1e-12):
 
 def kl_divergence(p, q, eps=1e-12):
     """
-    KL(P || Q) com smoothing.
+    KL(P || Q) = Σ P(x) log(P(x)/Q(x)) com suavização aditiva eps.
+
+    A suavização garante que Q(x) > 0 em todos os bins, evitando divisão por zero
+    nos bins onde a amostra não tem observações mas a original tem. KL é assimétrica:
+    KL(P||Q) ≠ KL(Q||P) — aqui usamos sempre P=original, Q=amostrada.
 
     Parameters
     ----------
     p, q : array-like
-        Distribuições normalizadas.
+        Distribuições normalizadas (ou não — são renormalizadas internamente).
     eps : float
-        Smoothing.
+        Suavização aditiva antes da normalização.
 
     Returns
     -------
@@ -65,12 +81,16 @@ def kl_divergence(p, q, eps=1e-12):
 
 def js_divergence(p, q, eps=1e-12):
     """
-    Jensen-Shannon divergence.
+    Jensen-Shannon divergence: JSD(P||Q) = ½ KL(P||M) + ½ KL(Q||M), M = ½(P+Q).
+
+    Diferentemente da KL, a JSD é simétrica e limitada: 0 ≤ JSD ≤ ln(2) ≈ 0.693
+    (ou 1 se usando log base 2). Isso facilita comparações entre métricas e samplers
+    sem preocupação com escala. É a métrica de distribuição padrão neste estudo.
 
     Returns
     -------
     float
-        JSD entre p e q.
+        JSD entre p e q; 0 indica distribuições idênticas.
     """
     p = np.asarray(p, dtype=float) + eps
     q = np.asarray(q, dtype=float) + eps
@@ -82,11 +102,18 @@ def js_divergence(p, q, eps=1e-12):
 
 def wasserstein_distance_1d(x, y):
     """
-    Earth Mover's Distance 1D.
+    Distância de Wasserstein 1D (Earth Mover's Distance).
+
+    Interpreta as distribuições como pilhas de terra e calcula o custo mínimo de
+    transportar uma para a outra. Diferentemente de KL e JS, opera diretamente nos
+    valores (não em histogramas), portanto é sensível à magnitude absoluta das
+    diferenças — útil para detectar se a amostra subestima ou superestima valores
+    médios de betweenness ou closeness, mesmo que a forma da distribuição pareça similar.
 
     Returns
     -------
     float
+        Custo de transporte ótimo; 0 indica distribuições idênticas.
     """
     x = np.asarray(x, dtype=float)
     y = np.asarray(y, dtype=float)
@@ -97,7 +124,12 @@ def wasserstein_distance_1d(x, y):
 
 def ks_statistic(x, y):
     """
-    Kolmogorov-Smirnov test.
+    Teste de Kolmogorov-Smirnov de duas amostras.
+
+    Compara as funções de distribuição acumulada (CDF) empíricas de x e y;
+    a estatística D é o máximo desvio entre elas. Não depende de bins, tornando-o
+    mais robusto que KL e JS para distribuições de grau com suporte discreto
+    (inteiros). O p-value testa H₀: as amostras vêm da mesma distribuição.
 
     Returns
     -------

@@ -1,0 +1,4 @@
+model,preserve_degree,preserve_clustering,preserve_betweenness,preserve_shortest_path,preserve_global_sps
+BA,preferential_random_walk,random_walk,snowball,preferential_random_walk,metropolis_hastings_rw
+ER,snowball,snowball,snowball,snowball,preferential_random_walk
+WS,snowball,metropolis_hastings_rw,snowball,snowball,snowball

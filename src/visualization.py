@@ -1,9 +1,19 @@
 """
-visualization.py — Visualizações para relatório
-=================================================
+visualization.py — Visualizações do benchmark de amostragem
+============================================================
 
-Gera figuras para o Nível 1 e outros níveis a partir dos CSVs.
-Usa matplotlib puro (sem seaborn).
+Gera as figuras de análise a partir dos CSVs de resultado, usando matplotlib
+puro (sem seaborn) para compatibilidade ampla. As figuras são salvas em PNG com
+DPI 150, adequado para relatório e web.
+
+Figuras produzidas
+------------------
+- sps_boxplot.png           : distribuição do SPS por sampler (boxplot com notch)
+- sps_by_fraction.png       : curvas SPS médio × fração amostral, facetado por modelo
+- heatmap_sampler_metric.png: JS divergence média por sampler e métrica estrutural
+- heatmap_model_sampler.png : SPS médio por modelo de rede e sampler
+- degree_distributions.png  : histogramas de grau sobrepostos (original vs amostradas)
+- pca_samples.png           : projeção PCA das métricas globais das amostras
 """
 
 import os
@@ -38,8 +48,20 @@ SAMPLER_COLORS = {
     "rl_sampler": "#E74C3C",
 }
 
-FIGSIZE = (10, 6)
-DPI = 150
+FIGSIZE = (12, 7)
+DPI = 220
+
+# Fontes maiores para legibilidade ao incorporar em relatório PDF
+import matplotlib as _mpl
+_mpl.rcParams.update({
+    "font.size": 14,
+    "axes.titlesize": 16,
+    "axes.labelsize": 14,
+    "xtick.labelsize": 12,
+    "ytick.labelsize": 12,
+    "legend.fontsize": 12,
+    "figure.titlesize": 17,
+})
 
 
 def _get_color(sampler_name):
@@ -56,7 +78,7 @@ def _save_fig(fig, filepath):
 # ============================================================================
 # 1. Boxplot SPS por sampler
 # ============================================================================
-def plot_sps_boxplot(df, config, filename="level1_sps_boxplot.png"):
+def plot_sps_boxplot(df, config, filename="sps_boxplot.png"):
     """Boxplot do SPS por sampler."""
     if "SPS" not in df.columns:
         return
@@ -66,7 +88,7 @@ def plot_sps_boxplot(df, config, filename="level1_sps_boxplot.png"):
     colors = [_get_color(s) for s in samplers]
 
     fig, ax = plt.subplots(figsize=FIGSIZE)
-    bp = ax.boxplot(data, labels=samplers, patch_artist=True, notch=True)
+    bp = ax.boxplot(data, tick_labels=samplers, patch_artist=True, notch=True)
     for patch, color in zip(bp["boxes"], colors):
         patch.set_facecolor(color)
         patch.set_alpha(0.7)
@@ -83,7 +105,7 @@ def plot_sps_boxplot(df, config, filename="level1_sps_boxplot.png"):
 # ============================================================================
 # 2. Linha SPS por fração amostral, facetado por modelo
 # ============================================================================
-def plot_sps_by_fraction(df, config, filename="level1_sps_by_fraction.png"):
+def plot_sps_by_fraction(df, config, filename="sps_by_fraction.png"):
     """Linhas do SPS médio por fração amostral, separado por modelo."""
     if "SPS" not in df.columns:
         return
@@ -121,7 +143,7 @@ def plot_sps_by_fraction(df, config, filename="level1_sps_by_fraction.png"):
 # ============================================================================
 # 3. Heatmap: sampler x métrica
 # ============================================================================
-def plot_heatmap_sampler_metric(df, config, filename="level1_heatmap_sampler_metric.png"):
+def plot_heatmap_sampler_metric(df, config, filename="heatmap_sampler_metric.png"):
     """Heatmap: sampler x métrica, mostrando erro médio."""
     metric_cols = [c for c in df.columns if c.endswith("_JS")]
     if not metric_cols:
@@ -157,7 +179,7 @@ def plot_heatmap_sampler_metric(df, config, filename="level1_heatmap_sampler_met
 # ============================================================================
 # 4. Heatmap: modelo x sampler com SPS
 # ============================================================================
-def plot_heatmap_model_sampler(df, config, filename="level1_heatmap_model_sampler.png"):
+def plot_heatmap_model_sampler(df, config, filename="heatmap_model_sampler.png"):
     """Heatmap: modelo de rede x sampler, mostrando SPS médio."""
     if "SPS" not in df.columns:
         return
@@ -193,7 +215,7 @@ def plot_heatmap_model_sampler(df, config, filename="level1_heatmap_model_sample
 # 5. Distribuição de grau: original vs amostrada
 # ============================================================================
 def plot_degree_distributions(original_degrees, sampled_dict, config,
-                               filename="level1_degree_distributions.png"):
+                               filename="degree_distributions.png"):
     """
     Gráfico de distribuição de grau original vs amostradas.
 
@@ -228,7 +250,7 @@ def plot_degree_distributions(original_degrees, sampled_dict, config,
 # ============================================================================
 # 6. PCA das redes amostradas
 # ============================================================================
-def plot_pca_samples(df_global, config, filename="level1_pca_samples.png"):
+def plot_pca_samples(df_global, config, filename="pca_samples.png"):
     """
     PCA das redes amostradas usando métricas globais como features.
     Cor por sampler, facet por modelo.
@@ -280,8 +302,25 @@ def plot_pca_samples(df_global, config, filename="level1_pca_samples.png"):
 # ============================================================================
 # Runner
 # ============================================================================
+def generate_all_figures(config):
+    """Gera todas as figuras do benchmark a partir dos CSVs de resultado."""
+    try:
+        df_dist = pd.read_csv(results_path(config, "raw", "distribution_distances.csv"))
+        df_global = pd.read_csv(results_path(config, "raw", "global_errors.csv"))
+    except FileNotFoundError as e:
+        logger.error(f"CSVs não encontrados: {e}")
+        return
+
+    plot_sps_boxplot(df_dist, config)
+    plot_sps_by_fraction(df_dist, config)
+    plot_heatmap_sampler_metric(df_dist, config)
+    plot_heatmap_model_sampler(df_dist, config)
+    plot_pca_samples(df_global, config)
+    logger.info("Todas as figuras do benchmark geradas.")
+
+
 def generate_all_level1_figures(config):
-    """Gera todas as figuras do Nível 1 a partir dos CSVs salvos."""
+    """Alias de compatibilidade: lê dos CSVs com prefixo legacy 'level1_'."""
     try:
         df_dist = pd.read_csv(results_path(config, "raw", "level1_distribution_distances.csv"))
         df_global = pd.read_csv(results_path(config, "raw", "level1_global_errors.csv"))
@@ -294,4 +333,4 @@ def generate_all_level1_figures(config):
     plot_heatmap_sampler_metric(df_dist, config)
     plot_heatmap_model_sampler(df_dist, config)
     plot_pca_samples(df_global, config)
-    logger.info("Todas as figuras do Nível 1 geradas.")
+    logger.info("Todas as figuras geradas.")

@@ -1,5 +1,6 @@
 ################################################################################
-# Configuração padrão — Projeto 6: Amostragem de Redes Complexas
+# Configuração padrão — Amostragem de Redes Complexas
+# Tema 6: "Como amostrar redes? Qual método preserva propriedades da rede?"
 ################################################################################
 
 # ---------- Sementes globais ----------
@@ -51,7 +52,7 @@ metrics:
   approx_betweenness: true
   betweenness_k: 200
 
-# ---------- Nível 2 — Meta-modelo ----------
+# ---------- Meta-modelo (seleção de sampler por aprendizado supervisionado) ----------
 metamodel:
   models:
     classification:
@@ -64,7 +65,7 @@ metamodel:
       - GradientBoosting
   cv_folds: 5
 
-# ---------- Nível 3 — RL ----------
+# ---------- Aprendizado por Reforço (DQN para seleção adaptativa de sampler) ----------
 rl:
   training:
     num_episodes: 500

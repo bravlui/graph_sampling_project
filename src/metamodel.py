@@ -1,9 +1,19 @@
 """
-metamodel.py — Meta-modelo preditivo (Nível 2)
-===============================================
+metamodel.py — Metamodelo de seleção de sampler
+================================================
 
-Constrói dataset supervisionado a partir dos resultados do Nível 1 e
-treina modelos para recomendar o melhor sampler.
+Abordagem de "algorithm selection": dado o perfil estrutural de uma rede
+(tamanho, densidade, modelo estimado, assortativity, etc.) e a fração amostral
+desejada, prever qual método de amostragem minimizará o SPS.
+
+O dataset supervisionado é construído a partir dos resultados do benchmark:
+  - Features: métricas globais da rede original + sample_frac + one-hot do modelo
+  - Target (classificação): sampler com menor SPS médio para cada (rede, fração)
+  - Target (regressão): SPS médio esperado para cada (sampler, fração)
+
+Modelos treinados: Random Forest, Gradient Boosting, Logistic Regression, MLP.
+A avaliação usa GroupKFold com grupos definidos por graph_id, garantindo que
+a rede de teste nunca aparece no treinamento (split correto para generalização).
 """
 
 import os
@@ -52,9 +62,8 @@ def build_metamodel_dataset(config):
     -------
     pd.DataFrame
     """
-    # Carregar resultados do Nível 1
-    dist_path = results_path(config, "raw", "level1_distribution_distances.csv")
-    global_path = results_path(config, "raw", "level1_global_errors.csv")
+    dist_path = results_path(config, "raw", "distribution_distances.csv")
+    global_path = results_path(config, "raw", "global_errors.csv")
 
     df_dist = pd.read_csv(dist_path)
     df_global = pd.read_csv(global_path)
@@ -118,7 +127,7 @@ def build_metamodel_dataset(config):
         df_meta[f"model_{model_name}"] = (df_meta["model"] == model_name).astype(int)
 
     # Salvar
-    save_csv(df_meta, results_path(config, "processed", "level2_metamodel_dataset.csv"))
+    save_csv(df_meta, results_path(config, "processed", "metamodel_dataset.csv"))
     logger.info(f"Dataset do meta-modelo: {len(df_meta)} exemplos")
     return df_meta
 
@@ -134,7 +143,7 @@ def train_metamodel(config):
     Classification: prever o melhor sampler.
     Regression: prever o SPS de cada sampler.
     """
-    dataset_path = results_path(config, "processed", "level2_metamodel_dataset.csv")
+    dataset_path = results_path(config, "processed", "metamodel_dataset.csv")
     if not os.path.exists(dataset_path):
         logger.info("Construindo dataset do meta-modelo...")
         df = build_metamodel_dataset(config)
@@ -225,11 +234,11 @@ def train_metamodel(config):
 
     # Salvar resultados
     df_results = pd.DataFrame(results)
-    save_csv(df_results, results_path(config, "processed", "level2_classification_metrics.csv"))
+    save_csv(df_results, results_path(config, "processed", "metamodel_classification_metrics.csv"))
 
     # Salvar melhor modelo
     if best_model is not None:
-        model_path = results_path(config, "models", "level2_best_classifier.joblib")
+        model_path = results_path(config, "models", "metamodel_best_classifier.joblib")
         joblib.dump({"model": best_model, "label_encoder": le, "feature_cols": feature_cols},
                     model_path)
         logger.info(f"Melhor classificador: {best_model_name} (acc={best_score:.3f})")
@@ -305,10 +314,10 @@ def _train_regression(config, df, feature_cols, groups):
                 best_model.fit(X, y)
 
     if results:
-        save_csv(pd.DataFrame(results), results_path(config, "processed", "level2_regression_metrics.csv"))
+        save_csv(pd.DataFrame(results), results_path(config, "processed", "metamodel_regression_metrics.csv"))
 
     if best_model:
-        joblib.dump(best_model, results_path(config, "models", "level2_best_regressor.joblib"))
+        joblib.dump(best_model, results_path(config, "models", "metamodel_best_regressor.joblib"))
 
 
 def _plot_confusion_matrix(cm, classes, config):
@@ -330,7 +339,7 @@ def _plot_confusion_matrix(cm, classes, config):
     fig.colorbar(im, ax=ax)
     fig.tight_layout()
 
-    filepath = results_path(config, "figures", "level2_confusion_matrix.png")
+    filepath = results_path(config, "figures", "metamodel_confusion_matrix.png")
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
     fig.savefig(filepath, dpi=150, bbox_inches="tight")
     plt.close(fig)
@@ -349,7 +358,7 @@ def _plot_feature_importance(importances, feature_names, config):
     ax.grid(axis="y", alpha=0.3)
     fig.tight_layout()
 
-    filepath = results_path(config, "figures", "level2_feature_importance.png")
+    filepath = results_path(config, "figures", "metamodel_feature_importance.png")
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
     fig.savefig(filepath, dpi=150, bbox_inches="tight")
     plt.close(fig)
@@ -407,7 +416,7 @@ def analyze_metamodel_results(config):
     - Matriz de decisão (modelo x objetivo → sampler recomendado)
     - Mapa de recomendação
     """
-    dataset_path = results_path(config, "processed", "level2_metamodel_dataset.csv")
+    dataset_path = results_path(config, "processed", "metamodel_dataset.csv")
     if not os.path.exists(dataset_path):
         logger.error("Dataset não encontrado.")
         return
@@ -431,7 +440,7 @@ def analyze_metamodel_results(config):
         decision_rows.append(row)
 
     df_decision = pd.DataFrame(decision_rows)
-    save_csv(df_decision, results_path(config, "processed", "level2_decision_matrix.csv"))
+    save_csv(df_decision, results_path(config, "processed", "metamodel_decision_matrix.csv"))
 
     # Plot do mapa de recomendação
     fig, ax = plt.subplots(figsize=(12, 4))
@@ -465,7 +474,7 @@ def analyze_metamodel_results(config):
     ax.set_title("Mapa de Recomendação de Sampler", fontweight="bold", fontsize=13)
     fig.tight_layout()
 
-    filepath = results_path(config, "figures", "level2_sampler_recommendation_map.png")
+    filepath = results_path(config, "figures", "metamodel_recommendation_map.png")
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
     fig.savefig(filepath, dpi=150, bbox_inches="tight")
     plt.close(fig)

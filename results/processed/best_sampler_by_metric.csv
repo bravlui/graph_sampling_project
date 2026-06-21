@@ -1,0 +1,14 @@
+metric,best_sampler,value
+degree_KL,snowball,2.8044400588174976
+degree_JS,snowball,0.31021893648808907
+clustering_KL,snowball,2.0176144209640707
+clustering_JS,metropolis_hastings_rw,0.1514489832242636
+betweenness_KL,snowball,0.34035019327148436
+betweenness_JS,snowball,0.09436930892848369
+eigenvector_KL,snowball,1.7051915884140598
+eigenvector_JS,snowball,0.23012750823426714
+closeness_KL,snowball,3.7792016111005253
+closeness_JS,snowball,0.3504160323917046
+k_core_KL,preferential_random_walk,19.14444860753225
+k_core_JS,preferential_random_walk,0.5664702031207577
+SPS,metropolis_hastings_rw,0.38133870882407556

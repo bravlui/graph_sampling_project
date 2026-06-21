@@ -1,0 +1,16 @@
+# Normaliza linha para LF no repositório; checkout converte para o padrão do SO
+* text=auto
+
+# Forçar LF para scripts Python e YAML (evita problemas de execução no Linux/macOS)
+*.py text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+*.csv text eol=lf
+
+# Tratar arquivos binários explicitamente
+*.png binary
+*.jpg binary
+*.pt binary
+*.joblib binary
