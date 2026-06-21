@@ -1,0 +1,5 @@
+scope,model,H_statistic,p_value,significant_a005
+global,all,234.6559,1.0742912455740282e-48,True
+per_model,BA,531.0341,1.5935066927586178e-112,True
+per_model,ER,49.7454,1.5623809865368965e-09,True
+per_model,WS,457.9535,9.45283026910124e-97,True
