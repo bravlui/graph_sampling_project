@@ -1,4 +1,4 @@
-# Graph Sampling — Preserving Network Structure Under Subsampling
+﻿# Graph Sampling — Preserving Network Structure Under Subsampling
 
 > *Como amostrar redes? Qual método preserva melhor as propriedades estruturais da rede original?*
 
@@ -217,11 +217,47 @@ graph_sampling_project/
 
 ---
 
+## Conclusão
+
+Este estudo realizou um benchmark sistemático de dez métodos de amostragem de redes em 18
+redes sintéticas com três modelos de topologia distinta. Os principais achados são:
+
+1. O **Metropolis-Hastings Random Walk** obteve o melhor SPS geral (0,381 ± 0,194),
+mostrando-se ideal para a preservação de distribuições topológicas completas. Contudo,
+a análise de métricas globais via PCA indicou que o **Random Node** retém melhor os valores
+médios absolutos da rede original.
+
+2. O **Snowball** apresenta comportamento assimétrico: excelente em métricas locais, mas
+distorce métricas globais. É adequado para estudos de vizinhança; inadequado quando a estrutura
+global é prioritária.
+
+3. **Redes Barabási-Albert são as mais difíceis de amostrar.** Frações pequenas (f ≤ 20%)
+frequentemente não capturam a cauda da lei de potência, independentemente do método.
+
+4. O **tipo de rede é o fator dominante** na dificuldade de amostragem, superando a diferença
+entre métodos. Isso sugere que a escolha do método deve ser guiada pela topologia esperada da
+rede alvo, não por um ranking genérico.
+
+5. **Abordagens adaptativas** (GOAS, PSO-GOAS, Bandit) oferecem ganhos marginais sobre o
+MHRW em cenários específicos, sem vantagem geral. Para aplicações práticas com restrição de
+tempo, o MHRW é a escolha padrão. Os resultados indicam que métodos clássicos de amostragem
+continuam competitivos mesmo diante de abordagens mais sofisticadas.
+
+6. A **análise Pareto multi-objetivo** revelou que o Snowball lidera a fronteira em frequência
+(29,1%), mas o MHRW possui melhor SPS agregado — evidenciando que o ranqueamento depende da
+métrica de comparação escolhida. O **metamodelo GradientBoosting** (acurácia 64,9%) demonstra
+que características estruturais do grafo são informativas para a recomendação automática de
+sampler, especialmente para distinguir redes BA das demais.
+---
+
 ## Referências
 
-- Stumpf, M. P. H., Wiuf, C., & May, R. M. (2005). Subgraph sampling and the estimation
-  of social network properties. *Physical Review E*, 73(1), 016102.
-  https://doi.org/10.1103/PhysRevE.73.016102
+- Stumpf, M. P. H., Wiuf, C., & May, R. M. (2005). Subnets of scale-free networks are
+  not scale-free: sampling properties of networks. *PNAS*, 102(12), 4221–4224.
+  https://doi.org/10.1073/pnas.0501179102
+
+- Lee, S. H., Kim, P.-J., & Jeong, H. (2006). Statistical properties of sampled networks.
+  *Physical Review E*, 73(1), 016102. https://doi.org/10.1103/PhysRevE.73.016102
 
 - Leskovec, J., & Faloutsos, C. (2006). Sampling from large graphs. *Proceedings of the
   12th ACM SIGKDD*, 631–636. https://doi.org/10.1145/1150402.1150479
@@ -236,3 +272,5 @@ graph_sampling_project/
 
 - Ashish7129. (2019). *Graph_Sampling* [Software]. GitHub.
   https://github.com/Ashish7129/Graph_Sampling
+
+
